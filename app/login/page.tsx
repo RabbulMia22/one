@@ -21,7 +21,7 @@ export default function LoginPage() {
     await signOut({ redirect: true, callbackUrl: "/" });
   };
 
-  // If user is logged in, show Logout button
+  // If user is logged in
   if (session) {
     return (
       <div className="flex flex-col gap-4 max-w-sm mx-auto mt-10">
@@ -36,7 +36,7 @@ export default function LoginPage() {
     );
   }
 
-  // If user is not logged in, show login form
+  // If user is not logged in
   return (
     <form
       onSubmit={handleLogin}
@@ -58,6 +58,15 @@ export default function LoginPage() {
       />
       <button type="submit" className="bg-blue-600 text-white p-2 rounded">
         Login
+      </button>
+
+      {/* ✅ Important: type="button" so form doesn’t submit */}
+      <button
+        type="button"
+        className="bg-red-600 text-white p-2 rounded"
+        onClick={() => signIn("google", { callbackUrl: "/admindashboard" })}
+      >
+        Login with Google
       </button>
     </form>
   );

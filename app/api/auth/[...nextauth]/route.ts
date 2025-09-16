@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
@@ -7,6 +8,7 @@ import { JWT } from "next-auth/jwt";
 
 export const authOptions = {
   providers: [
+    // Existing credentials login
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -24,22 +26,44 @@ export const authOptions = {
 
         return { id: user._id, name: user.name, email: user.email, role: user.role };
       }
-    })
+    }),
+
+    // ✅ Add Google login
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
 
- session: {
+  session: {
     strategy: "jwt" as const,
   },
 
   callbacks: {
-    async jwt({ token, user } : {token: JWT, user?: any}) {
+    async jwt({ token, user, account } : { token: JWT; user?: any; account?: any }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = user.role || "user"; // default role if undefined
       }
+
+      // Auto-create Google users if they don't exist in DB
+      if (account?.provider === "google" && user) {
+        await dbConnect();
+        const existingUser = await User.findOne({ email: user.email });
+        if (!existingUser) {
+          await User.create({
+            name: user.name,
+            email: user.email,
+            password: "", // no password for OAuth users
+            role: "user",
+          });
+        }
+      }
+
       return token;
     },
-    async session({ session, token }: {session: any, token: JWT}) {
+
+    async session({ session, token }: { session: any; token: JWT }) {
       if (token) {
         session.user.id = token.id;
         session.user.role = token.role;
